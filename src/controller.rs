@@ -10,6 +10,7 @@ use crate::game::Direction;
 pub enum Message {
     Exit,
     Direction(Direction),
+    Restart,
 }
 
 pub fn start_controller() -> Receiver<Message> {
@@ -21,13 +22,14 @@ pub fn start_controller() -> Receiver<Message> {
             match key_event.code {
                 KeyCode::Char(c) => match c {
                     'q' => {
-                        tx.send(Message::Exit)
-                            .expect("Failed to send keyevent on channel");
-
-                        break;
+                        tx.send(Message::Exit).unwrap();
+                    }
+                    'r' => {
+                        tx.send(Message::Restart).unwrap();
                     }
                     _ => {}
                 },
+
                 KeyCode::Down => {
                     tx.send(Message::Direction(Direction::Down)).unwrap();
                 }

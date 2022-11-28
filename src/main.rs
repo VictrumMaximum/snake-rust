@@ -1,6 +1,6 @@
 use std::io::{stdout, Error, Write};
 
-use controller::start_controller;
+use controller::{start_controller, Message};
 use crossterm::{
     cursor::{DisableBlinking, EnableBlinking, Hide, Show},
     execute,
@@ -18,13 +18,29 @@ fn main() -> Result<(), Error> {
 
     init_screen(&out)?;
 
-    // TODO: restore screen in case of panic
+    'restart_loop: loop {
+        // TODO: restore screen in case of panic
 
-    let game = Game::new()?;
+        let mut game = Game::new()?;
 
-    let rx = start_controller();
+        let rx = start_controller();
 
-    start_drawer(out.by_ref(), game, rx)?;
+        start_drawer(out.by_ref(), &mut game, &rx)?;
+
+        if game.is_alive() {
+            break 'restart_loop;
+        } else {
+            'user_input_loop: loop {
+                if let Ok(msg) = rx.recv() {
+                    match msg {
+                        Message::Exit => break 'restart_loop,
+                        Message::Restart => break 'user_input_loop,
+                        _ => {}
+                    }
+                }
+            }
+        }
+    }
 
     restore_screen(out.by_ref())?;
 

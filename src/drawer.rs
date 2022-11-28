@@ -13,21 +13,22 @@ use crossterm::{
 
 use crate::{controller::Message, game::Game};
 
-const RENDER_LOOP_SLEEP_MS: u64 = 500;
+const RENDER_LOOP_SLEEP_MS: u64 = 400;
 
 pub fn start_drawer(
     mut out: impl Write,
-    mut game: Game,
-    rx: Receiver<Message>,
+    game: &mut Game,
+    rx: &Receiver<Message>,
 ) -> Result<(), Error> {
     'game_loop: loop {
         let start_time = Instant::now();
 
         game.step_game();
+        clear_and_draw(out.by_ref(), &game)?;
+
         if !game.is_alive() {
             break 'game_loop;
         }
-        clear_and_draw(out.by_ref(), &game)?;
 
         'controller_loop: loop {
             let elapsed = start_time.elapsed().as_millis() as u64;
@@ -44,6 +45,7 @@ pub fn start_drawer(
                             break 'controller_loop;
                         };
                     }
+                    _ => {}
                 }
             }
         }
@@ -52,38 +54,81 @@ pub fn start_drawer(
     Ok(())
 }
 
-const SNAKE_CONTENT: &str = "*";
-const FRUIT_CONTENT: &str = "+";
+const SNAKE_HEAD_CONTENT: &str = "🐲";
+const SNAKE_HEAD_DEAD: &str = "😵";
+
+const SNAKE_BODY_CONTENT: &str = "🐍";
+const SNAKE_BODY_GROWING_CONTENT: &str = "🌟";
+const SNAKE_BODY_DEAD_CONTENT: &str = "❌";
+
+const FRUIT_1_CONTENT: &str = "🍊";
+const FRUIT_2_CONTENT: &str = "🍓";
+const FRUIT_3_CONTENT: &str = "🍌";
 
 fn clear_and_draw(mut out: impl Write, game: &Game) -> Result<(), Error> {
     clear_screen(out.by_ref())?;
 
-    let fruit = game.get_fruit();
-
+    let score_str = format!("score: {}", game.score);
     queue!(
         out,
-        MoveTo(fruit.location.x, fruit.location.y),
-        Print(FRUIT_CONTENT.with(Color::Yellow))
+        MoveTo(game.size.x - score_str.len() as u16, 0),
+        PrintStyledContent(score_str.with(Color::Green))
     )?;
+
+    let fruit = game.get_fruit();
 
     let snake = &game.snake;
     let snake_head = snake.get_head();
     let snake_body = snake.get_body();
 
-    let snake_head_style = SNAKE_CONTENT.with(Color::Green);
-    let snake_body_style = SNAKE_CONTENT.with(Color::White);
-
-    queue!(
-        out,
-        MoveTo(snake_head.x, snake_head.y),
-        PrintStyledContent(snake_head_style)
-    )?;
+    let snake_head_style = if game.is_alive() {
+        SNAKE_HEAD_CONTENT
+    } else {
+        SNAKE_HEAD_DEAD
+    };
+    let snake_body_style = if game.is_alive() {
+        if game.snake.is_growing() {
+            SNAKE_BODY_GROWING_CONTENT
+        } else {
+            SNAKE_BODY_CONTENT
+        }
+    } else {
+        SNAKE_BODY_DEAD_CONTENT
+    };
 
     for snake_point in snake_body {
         queue!(
             out,
             MoveTo(snake_point.x, snake_point.y),
-            PrintStyledContent(snake_body_style)
+            Print(snake_body_style)
+        )?;
+    }
+
+    queue!(
+        out,
+        MoveTo(snake_head.x, snake_head.y),
+        Print(snake_head_style)
+    )?;
+
+    let fruit_content = match fruit.points {
+        1 => FRUIT_1_CONTENT,
+        2 => FRUIT_2_CONTENT,
+        _ => FRUIT_3_CONTENT,
+    };
+
+    queue!(
+        out,
+        MoveTo(fruit.location.x, fruit.location.y),
+        Print(fruit_content)
+    )?;
+
+    if !game.is_alive() {
+        queue!(
+            out,
+            MoveTo(0, 0),
+            PrintStyledContent("game over".with(Color::Red)),
+            MoveTo(0, 1),
+            PrintStyledContent("press 'q' to exit, press 'r' to restart".with(Color::Red)),
         )?;
     }
 

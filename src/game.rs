@@ -8,6 +8,54 @@ pub struct Point {
     pub y: u16,
 }
 
+impl Point {
+    pub fn new(x: u16, y: u16) -> Point {
+        Point {
+            x: Point::round_to_multiple_of_two(x),
+            y,
+        }
+    }
+
+    pub fn up(&self, loop_around: u16) -> Point {
+        Point {
+            x: self.x,
+            y: dec_loop_around(self.y, loop_around, false),
+        }
+    }
+
+    pub fn down(&self, loop_around: u16) -> Point {
+        Point {
+            x: self.x,
+            y: inc_loop_around(self.y, loop_around, false),
+        }
+    }
+
+    pub fn left(&self, loop_around: u16) -> Point {
+        Point {
+            x: dec_loop_around(self.x, loop_around, true),
+            y: self.y,
+        }
+    }
+
+    pub fn right(&self, loop_around: u16) -> Point {
+        Point {
+            x: inc_loop_around(self.x, loop_around, true),
+            y: self.y,
+        }
+    }
+
+    fn round_to_multiple_of_two(x: u16) -> u16 {
+        if x % 2 == 0 {
+            return x;
+        }
+
+        if x > 1 {
+            return x - 1;
+        }
+        return x + 1;
+    }
+}
+
 impl PartialEq for Point {
     fn eq(&self, other: &Self) -> bool {
         self.x == other.x && self.y == other.y
@@ -33,20 +81,14 @@ impl Direction {
     }
 }
 
-pub struct Game {
-    pub snake: Snake,
-    direction: Direction,
-    fruit: Fruit,
-    size: Point,
-    alive: bool,
-}
-
 pub struct Fruit {
     pub location: Point,
+    pub points: u16,
 }
 
 pub struct Snake {
     body: LinkedList<Point>,
+    growing: u16,
 }
 
 impl Snake {
@@ -71,34 +113,47 @@ impl Snake {
     fn add_head(&mut self, head: Point) {
         self.body.push_front(head);
     }
+
+    pub fn is_growing(&self) -> bool {
+        self.growing > 0
+    }
+}
+
+pub struct Game {
+    pub snake: Snake,
+    direction: Direction,
+    fruit: Fruit,
+    pub size: Point,
+    alive: bool,
+    pub score: u64,
 }
 
 impl Game {
     pub fn new() -> Result<Game, Error> {
         let (columns, rows) = size()?;
-        let middle = Point {
-            x: columns / 2,
-            y: rows / 2,
-        };
+        let middle = Point::new(columns / 2, rows / 2);
 
         Ok(Game {
             snake: Snake {
                 body: LinkedList::from([middle]),
+                growing: 2,
             },
             direction: Direction::Right,
             fruit: Game::generate_fruit(columns, rows),
             size: Point {
-                x: columns,
+                x: Point::round_to_multiple_of_two(columns),
                 y: rows,
             },
             alive: true,
+            score: 0,
         })
     }
 
     pub fn step_game(&mut self) {
         self.step_snake();
-        self.check_fruit();
         self.check_self_hit();
+        self.check_fruit();
+        self.check_growing();
     }
 
     fn check_self_hit(&mut self) {
@@ -121,6 +176,14 @@ impl Game {
 
         if self.fruit.location == *head {
             self.fruit = Game::generate_fruit(self.size.x, self.size.y);
+            self.snake.growing = self.fruit.points;
+            self.score += self.fruit.points as u64;
+        }
+    }
+
+    fn check_growing(&mut self) {
+        if self.snake.growing > 0 {
+            self.snake.growing -= 1;
         } else {
             self.snake.cut_tail();
         }
@@ -132,24 +195,11 @@ impl Game {
         let snake = &self.snake;
         let head = snake.get_head();
 
-        let (x, y) = (head.x, head.y);
         let new_head = match self.direction {
-            Up => Point {
-                x,
-                y: dec_loop_around(y, self.size.y),
-            },
-            Down => Point {
-                x,
-                y: inc_loop_around(y, self.size.y),
-            },
-            Left => Point {
-                x: dec_loop_around(x, self.size.x),
-                y,
-            },
-            Right => Point {
-                x: inc_loop_around(x, self.size.x),
-                y,
-            },
+            Up => head.up(self.size.y),
+            Down => head.down(self.size.y),
+            Left => head.left(self.size.x),
+            Right => head.right(self.size.x),
         };
 
         self.snake.add_head(new_head);
@@ -171,10 +221,8 @@ impl Game {
         let mut rng = rand::thread_rng();
 
         Fruit {
-            location: Point {
-                x: rng.gen_range(0..columns),
-                y: rng.gen_range(0..rows),
-            },
+            location: Point::new(rng.gen_range(0..columns), rng.gen_range(0..rows)),
+            points: rng.gen_range(1..=3),
         }
     }
 
@@ -187,18 +235,22 @@ impl Game {
     }
 }
 
-fn inc_loop_around(val: u16, max: u16) -> u16 {
-    if val + 1 > max {
+fn inc_loop_around(val: u16, max: u16, double_step: bool) -> u16 {
+    let step = if double_step { 2 } else { 1 };
+
+    if (val + step + 1) > max {
         0
     } else {
-        val + 1
+        val + step
     }
 }
 
-fn dec_loop_around(val: u16, loop_around: u16) -> u16 {
-    if val == 0 {
-        loop_around
+fn dec_loop_around(val: u16, loop_around: u16, double_step: bool) -> u16 {
+    let step = if double_step { 2 } else { 1 };
+
+    if (val as i16 - step as i16) < 0 {
+        loop_around - step
     } else {
-        val - 1
+        val - step
     }
 }
