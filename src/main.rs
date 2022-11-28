@@ -18,6 +18,8 @@ fn main() -> Result<(), Error> {
 
     init_screen(&out)?;
 
+    // TODO: restore screen in case of panic
+
     let game = init_game()?;
 
     let rx = start_controller();

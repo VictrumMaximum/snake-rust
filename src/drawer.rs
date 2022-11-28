@@ -6,8 +6,8 @@ use std::{
 
 use crossterm::{
     cursor::MoveTo,
-    execute,
-    style::{Color, PrintStyledContent, Stylize},
+    execute, queue,
+    style::{Color, Print, PrintStyledContent, Stylize},
     terminal::Clear,
 };
 
@@ -48,18 +48,32 @@ pub fn start_drawer(
     Ok(())
 }
 
-const SNAKE_CONTENT: &str = "+";
+const SNAKE_CONTENT: &str = "*";
+const FRUIT_CONTENT: &str = "+";
 
 fn clear_and_draw(mut out: impl Write, game: &Game) -> Result<(), Error> {
     clear_screen(out.by_ref())?;
-    let snake = game.get_snake();
 
-    let styled_snake = SNAKE_CONTENT.with(Color::Green);
-    execute!(
+    let fruit = game.get_fruit();
+
+    queue!(
         out,
-        MoveTo(snake.x, snake.y),
-        PrintStyledContent(styled_snake)
-    )
+        MoveTo(fruit.location.x, fruit.location.y),
+        Print(FRUIT_CONTENT.with(Color::Yellow))
+    )?;
+
+    let snake = game.get_snake();
+    let styled_snake = SNAKE_CONTENT.with(Color::Green);
+
+    for snake_point in snake {
+        queue!(
+            out,
+            MoveTo(snake_point.x, snake_point.y),
+            PrintStyledContent(styled_snake)
+        )?;
+    }
+
+    out.flush()
 }
 
 fn clear_screen(mut out: impl Write) -> Result<(), Error> {

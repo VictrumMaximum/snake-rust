@@ -1,4 +1,4 @@
-use std::io::Error;
+use std::{collections::LinkedList, io::Error};
 
 use crossterm::terminal::size;
 use rand::Rng;
@@ -6,6 +6,12 @@ use rand::Rng;
 pub struct Point {
     pub x: u16,
     pub y: u16,
+}
+
+impl PartialEq for Point {
+    fn eq(&self, other: &Self) -> bool {
+        self.x == other.x && self.y == other.y
+    }
 }
 
 pub enum Direction {
@@ -21,13 +27,12 @@ pub struct Game {
     fruit: Fruit,
 }
 
-struct Fruit {
-    location: Point,
+pub struct Fruit {
+    pub location: Point,
     points: u16,
 }
 
-type Snake = Point;
-// type Snake = Vec<Point>;
+type Snake = LinkedList<Point>;
 
 impl Game {
     pub fn step_game(&mut self) {
@@ -37,17 +42,29 @@ impl Game {
     fn step_snake(&mut self) {
         use Direction::{Down, Left, Right, Up};
 
-        let (x, y) = (self.snake.x, self.snake.y);
-        self.snake = match self.direction {
+        let head = self.snake.front().expect("Snake is empty");
+
+        let (x, y) = (head.x, head.y);
+        let new_head = match self.direction {
             Up => Point { x, y: y - 1 },
             Down => Point { x, y: y + 1 },
             Left => Point { x: x - 1, y },
             Right => Point { x: x + 1, y },
+        };
+
+        if self.fruit.location != new_head {
+            self.snake.pop_back();
         }
+
+        self.snake.push_front(new_head);
     }
 
     pub fn get_snake(&self) -> &Snake {
         &self.snake
+    }
+
+    pub fn get_fruit(&self) -> &Fruit {
+        &self.fruit
     }
 
     pub fn set_direction(&mut self, dir: Direction) {
@@ -73,8 +90,7 @@ pub fn init_game() -> Result<Game, Error> {
     };
 
     Ok(Game {
-        // snake: vec![middle],
-        snake: middle,
+        snake: LinkedList::from([middle]),
         direction: Direction::Right,
         fruit,
     })
