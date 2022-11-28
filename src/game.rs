@@ -8,7 +8,7 @@ pub struct Point {
     pub y: u16,
 }
 
-enum Direction {
+pub enum Direction {
     Up,
     Down,
     Left,
@@ -48,6 +48,10 @@ impl Game {
 
     pub fn get_snake(&self) -> &Snake {
         &self.snake
+    }
+
+    pub fn set_direction(&mut self, dir: Direction) {
+        self.direction = dir;
     }
 }
 

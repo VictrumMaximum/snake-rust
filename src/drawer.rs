@@ -1,7 +1,7 @@
 use std::{
     io::{Error, Write},
-    thread::sleep,
-    time::Duration,
+    sync::mpsc::Receiver,
+    time::{Duration, Instant},
 };
 
 use crossterm::{
@@ -11,21 +11,38 @@ use crossterm::{
     terminal::Clear,
 };
 
-use crate::game::Game;
+use crate::{controller::Message, game::Game};
 
-pub fn start_drawer(mut out: impl Write, mut game: Game) -> Result<(), Error> {
-    let mut i = 0;
-    let max_loop = 10;
+const RENDER_LOOP_SLEEP_MS: u64 = 500;
 
-    loop {
+pub fn start_drawer(
+    mut out: impl Write,
+    mut game: Game,
+    rx: Receiver<Message>,
+) -> Result<(), Error> {
+    'game_loop: loop {
+        let start_time = Instant::now();
+
         game.step_game();
         clear_and_draw(out.by_ref(), &game)?;
 
-        i += 1;
-        if i > max_loop {
-            break;
+        'controller_loop: loop {
+            let elapsed = start_time.elapsed().as_millis() as u64;
+            if elapsed > RENDER_LOOP_SLEEP_MS {
+                break 'controller_loop;
+            }
+            let time_to_sleep: u64 = RENDER_LOOP_SLEEP_MS - elapsed;
+
+            if let Ok(msg) = rx.recv_timeout(Duration::from_millis(time_to_sleep)) {
+                match msg {
+                    Message::Exit => break 'game_loop,
+                    Message::Direction(dir) => {
+                        game.set_direction(dir);
+                        break 'controller_loop;
+                    }
+                }
+            }
         }
-        sleep(Duration::from_millis(500));
     }
 
     Ok(())

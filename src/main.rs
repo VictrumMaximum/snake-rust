@@ -1,5 +1,6 @@
 use std::io::{stdout, Error, Write};
 
+use controller::start_controller;
 use crossterm::{
     cursor::{DisableBlinking, EnableBlinking, Hide, Show},
     execute,
@@ -8,6 +9,7 @@ use crossterm::{
 use drawer::start_drawer;
 use game::init_game;
 
+mod controller;
 mod drawer;
 mod game;
 
@@ -18,7 +20,9 @@ fn main() -> Result<(), Error> {
 
     let game = init_game()?;
 
-    start_drawer(out.by_ref(), game)?;
+    let rx = start_controller();
+
+    start_drawer(out.by_ref(), game, rx)?;
 
     restore_screen(out.by_ref())?;
 
