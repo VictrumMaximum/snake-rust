@@ -65,14 +65,24 @@ fn clear_and_draw(mut out: impl Write, game: &Game) -> Result<(), Error> {
         Print(FRUIT_CONTENT.with(Color::Yellow))
     )?;
 
-    let snake = game.get_snake_body();
-    let styled_snake = SNAKE_CONTENT.with(Color::Green);
+    let snake = &game.snake;
+    let snake_head = snake.get_head();
+    let snake_body = snake.get_body();
 
-    for snake_point in snake {
+    let snake_head_style = SNAKE_CONTENT.with(Color::Green);
+    let snake_body_style = SNAKE_CONTENT.with(Color::White);
+
+    queue!(
+        out,
+        MoveTo(snake_head.x, snake_head.y),
+        PrintStyledContent(snake_head_style)
+    )?;
+
+    for snake_point in snake_body {
         queue!(
             out,
             MoveTo(snake_point.x, snake_point.y),
-            PrintStyledContent(styled_snake)
+            PrintStyledContent(snake_body_style)
         )?;
     }
 

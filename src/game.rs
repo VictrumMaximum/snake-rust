@@ -14,6 +14,7 @@ impl PartialEq for Point {
     }
 }
 
+#[derive(PartialEq)]
 pub enum Direction {
     Up,
     Down,
@@ -21,8 +22,19 @@ pub enum Direction {
     Right,
 }
 
+impl Direction {
+    fn opposite(&self) -> Self {
+        match self {
+            Self::Up => Self::Down,
+            Self::Down => Self::Up,
+            Self::Left => Self::Right,
+            Self::Right => Self::Left,
+        }
+    }
+}
+
 pub struct Game {
-    snake: Snake,
+    pub snake: Snake,
     direction: Direction,
     fruit: Fruit,
     size: Point,
@@ -31,10 +43,35 @@ pub struct Game {
 
 pub struct Fruit {
     pub location: Point,
-    points: u16,
 }
 
-type Snake = LinkedList<Point>;
+pub struct Snake {
+    body: LinkedList<Point>,
+}
+
+impl Snake {
+    pub fn get_full_body(&self) -> impl Iterator<Item = &Point> {
+        self.body.iter()
+    }
+
+    pub fn get_body(&self) -> impl Iterator<Item = &Point> {
+        let mut it = self.get_full_body();
+        it.next();
+        it
+    }
+
+    pub fn get_head(&self) -> &Point {
+        self.body.front().expect("Snake is empty")
+    }
+
+    fn cut_tail(&mut self) {
+        self.body.pop_back();
+    }
+
+    fn add_head(&mut self, head: Point) {
+        self.body.push_front(head);
+    }
+}
 
 impl Game {
     pub fn new() -> Result<Game, Error> {
@@ -45,7 +82,9 @@ impl Game {
         };
 
         Ok(Game {
-            snake: LinkedList::from([middle]),
+            snake: Snake {
+                body: LinkedList::from([middle]),
+            },
             direction: Direction::Right,
             fruit: Game::generate_fruit(columns, rows),
             size: Point {
@@ -63,34 +102,35 @@ impl Game {
     }
 
     fn check_self_hit(&mut self) {
-        let head = self.get_snake_head();
+        let snake = &self.snake;
+        let head = snake.get_head();
+        let body = snake.get_body();
 
-        for snake_body_point in self.get_snake_body() {
-            if head == snake_body_point && !std::ptr::eq(head, snake_body_point) {
-                self.alive = false;
+        let mut intersect = false;
+        for snake_body_point in body {
+            if head == snake_body_point {
+                intersect = true;
                 break;
             }
         }
+        self.set_alive(!intersect);
     }
 
     fn check_fruit(&mut self) {
-        let head = self.get_snake_head();
+        let head = self.snake.get_head();
 
-        if self.fruit.location != *head {
-            self.snake.pop_back();
-        } else {
+        if self.fruit.location == *head {
             self.fruit = Game::generate_fruit(self.size.x, self.size.y);
+        } else {
+            self.snake.cut_tail();
         }
-    }
-
-    fn get_snake_head(&self) -> &Point {
-        self.get_snake_body().front().expect("Snake is empty")
     }
 
     fn step_snake(&mut self) {
         use Direction::{Down, Left, Right, Up};
 
-        let head = self.get_snake_head();
+        let snake = &self.snake;
+        let head = snake.get_head();
 
         let (x, y) = (head.x, head.y);
         let new_head = match self.direction {
@@ -112,11 +152,7 @@ impl Game {
             },
         };
 
-        self.snake.push_front(new_head);
-    }
-
-    pub fn get_snake_body(&self) -> &Snake {
-        &self.snake
+        self.snake.add_head(new_head);
     }
 
     pub fn get_fruit(&self) -> &Fruit {
@@ -127,6 +163,10 @@ impl Game {
         self.alive
     }
 
+    pub fn set_alive(&mut self, alive: bool) {
+        self.alive = alive;
+    }
+
     pub fn generate_fruit(columns: u16, rows: u16) -> Fruit {
         let mut rng = rand::thread_rng();
 
@@ -135,12 +175,13 @@ impl Game {
                 x: rng.gen_range(0..columns),
                 y: rng.gen_range(0..rows),
             },
-            points: 1,
         }
     }
 
     pub fn set_direction(&mut self, dir: Direction) {
-        self.direction = dir;
+        if self.direction.opposite() != dir {
+            self.direction = dir;
+        }
     }
 }
 
