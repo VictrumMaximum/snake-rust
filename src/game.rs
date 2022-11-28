@@ -1,4 +1,8 @@
-use std::{collections::LinkedList, io::Error};
+use std::{
+    cmp::{max, min},
+    collections::LinkedList,
+    io::Error,
+};
 
 use crossterm::terminal::size;
 use rand::Rng;
@@ -65,10 +69,22 @@ impl Game {
 
         let (x, y) = (head.x, head.y);
         let new_head = match self.direction {
-            Up => Point { x, y: y - 1 },
-            Down => Point { x, y: y + 1 },
-            Left => Point { x: x - 1, y },
-            Right => Point { x: x + 1, y },
+            Up => Point {
+                x,
+                y: dec_loop_around(y, self.size.y),
+            },
+            Down => Point {
+                x,
+                y: inc_loop_around(y, self.size.y),
+            },
+            Left => Point {
+                x: dec_loop_around(x, self.size.x),
+                y,
+            },
+            Right => Point {
+                x: inc_loop_around(x, self.size.x),
+                y,
+            },
         };
 
         if self.fruit.location != new_head {
@@ -102,5 +118,21 @@ impl Game {
 
     pub fn set_direction(&mut self, dir: Direction) {
         self.direction = dir;
+    }
+}
+
+fn inc_loop_around(val: u16, max: u16) -> u16 {
+    if val + 1 > max {
+        0
+    } else {
+        val + 1
+    }
+}
+
+fn dec_loop_around(val: u16, loop_around: u16) -> u16 {
+    if val == 0 {
+        loop_around
+    } else {
+        val - 1
     }
 }
