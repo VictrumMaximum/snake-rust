@@ -40,8 +40,9 @@ pub fn start_drawer(
                 match msg {
                     Message::Exit => break 'game_loop,
                     Message::Direction(dir) => {
-                        game.set_direction(dir);
-                        break 'controller_loop;
+                        if game.set_direction(dir) {
+                            break 'controller_loop;
+                        };
                     }
                 }
             }

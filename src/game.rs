@@ -178,10 +178,12 @@ impl Game {
         }
     }
 
-    pub fn set_direction(&mut self, dir: Direction) {
+    pub fn set_direction(&mut self, dir: Direction) -> bool {
         if self.direction.opposite() != dir {
             self.direction = dir;
+            return true;
         }
+        return false;
     }
 }
 
