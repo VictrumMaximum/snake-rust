@@ -7,7 +7,7 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use drawer::start_drawer;
-use game::init_game;
+use game::Game;
 
 mod controller;
 mod drawer;
@@ -20,7 +20,7 @@ fn main() -> Result<(), Error> {
 
     // TODO: restore screen in case of panic
 
-    let game = init_game()?;
+    let game = Game::new()?;
 
     let rx = start_controller();
 

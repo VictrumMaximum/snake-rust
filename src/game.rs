@@ -25,6 +25,7 @@ pub struct Game {
     snake: Snake,
     direction: Direction,
     fruit: Fruit,
+    size: Point,
 }
 
 pub struct Fruit {
@@ -35,6 +36,24 @@ pub struct Fruit {
 type Snake = LinkedList<Point>;
 
 impl Game {
+    pub fn new() -> Result<Game, Error> {
+        let (columns, rows) = size()?;
+        let middle = Point {
+            x: columns / 2,
+            y: rows / 2,
+        };
+
+        Ok(Game {
+            snake: LinkedList::from([middle]),
+            direction: Direction::Right,
+            fruit: Game::generate_fruit(columns, rows),
+            size: Point {
+                x: columns,
+                y: rows,
+            },
+        })
+    }
+
     pub fn step_game(&mut self) {
         self.step_snake();
     }
@@ -54,6 +73,8 @@ impl Game {
 
         if self.fruit.location != new_head {
             self.snake.pop_back();
+        } else {
+            self.fruit = Game::generate_fruit(self.size.x, self.size.y);
         }
 
         self.snake.push_front(new_head);
@@ -67,31 +88,19 @@ impl Game {
         &self.fruit
     }
 
+    pub fn generate_fruit(columns: u16, rows: u16) -> Fruit {
+        let mut rng = rand::thread_rng();
+
+        Fruit {
+            location: Point {
+                x: rng.gen_range(0..columns),
+                y: rng.gen_range(0..rows),
+            },
+            points: 1,
+        }
+    }
+
     pub fn set_direction(&mut self, dir: Direction) {
         self.direction = dir;
     }
-}
-
-pub fn init_game() -> Result<Game, Error> {
-    let (columns, rows) = size()?;
-    let middle = Point {
-        x: columns / 2,
-        y: rows / 2,
-    };
-
-    let mut rng = rand::thread_rng();
-
-    let fruit = Fruit {
-        location: Point {
-            x: rng.gen_range(0..columns),
-            y: rng.gen_range(0..rows),
-        },
-        points: 1,
-    };
-
-    Ok(Game {
-        snake: LinkedList::from([middle]),
-        direction: Direction::Right,
-        fruit,
-    })
 }
