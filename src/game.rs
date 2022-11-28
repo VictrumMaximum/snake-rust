@@ -1,8 +1,4 @@
-use std::{
-    cmp::{max, min},
-    collections::LinkedList,
-    io::Error,
-};
+use std::{collections::LinkedList, io::Error};
 
 use crossterm::terminal::size;
 use rand::Rng;
@@ -30,6 +26,7 @@ pub struct Game {
     direction: Direction,
     fruit: Fruit,
     size: Point,
+    alive: bool,
 }
 
 pub struct Fruit {
@@ -55,17 +52,45 @@ impl Game {
                 x: columns,
                 y: rows,
             },
+            alive: true,
         })
     }
 
     pub fn step_game(&mut self) {
         self.step_snake();
+        self.check_fruit();
+        self.check_self_hit();
+    }
+
+    fn check_self_hit(&mut self) {
+        let head = self.get_snake_head();
+
+        for snake_body_point in self.get_snake_body() {
+            if head == snake_body_point && !std::ptr::eq(head, snake_body_point) {
+                self.alive = false;
+                break;
+            }
+        }
+    }
+
+    fn check_fruit(&mut self) {
+        let head = self.get_snake_head();
+
+        if self.fruit.location != *head {
+            self.snake.pop_back();
+        } else {
+            self.fruit = Game::generate_fruit(self.size.x, self.size.y);
+        }
+    }
+
+    fn get_snake_head(&self) -> &Point {
+        self.get_snake_body().front().expect("Snake is empty")
     }
 
     fn step_snake(&mut self) {
         use Direction::{Down, Left, Right, Up};
 
-        let head = self.snake.front().expect("Snake is empty");
+        let head = self.get_snake_head();
 
         let (x, y) = (head.x, head.y);
         let new_head = match self.direction {
@@ -87,21 +112,19 @@ impl Game {
             },
         };
 
-        if self.fruit.location != new_head {
-            self.snake.pop_back();
-        } else {
-            self.fruit = Game::generate_fruit(self.size.x, self.size.y);
-        }
-
         self.snake.push_front(new_head);
     }
 
-    pub fn get_snake(&self) -> &Snake {
+    pub fn get_snake_body(&self) -> &Snake {
         &self.snake
     }
 
     pub fn get_fruit(&self) -> &Fruit {
         &self.fruit
+    }
+
+    pub fn is_alive(&self) -> bool {
+        self.alive
     }
 
     pub fn generate_fruit(columns: u16, rows: u16) -> Fruit {

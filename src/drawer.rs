@@ -24,6 +24,9 @@ pub fn start_drawer(
         let start_time = Instant::now();
 
         game.step_game();
+        if !game.is_alive() {
+            break 'game_loop;
+        }
         clear_and_draw(out.by_ref(), &game)?;
 
         'controller_loop: loop {
@@ -62,7 +65,7 @@ fn clear_and_draw(mut out: impl Write, game: &Game) -> Result<(), Error> {
         Print(FRUIT_CONTENT.with(Color::Yellow))
     )?;
 
-    let snake = game.get_snake();
+    let snake = game.get_snake_body();
     let styled_snake = SNAKE_CONTENT.with(Color::Green);
 
     for snake_point in snake {
