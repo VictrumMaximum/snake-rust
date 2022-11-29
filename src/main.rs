@@ -17,13 +17,12 @@ fn main() -> Result<(), Error> {
     let mut out = stdout();
 
     init_screen(&out)?;
+    let rx = start_controller();
 
     'restart_loop: loop {
         // TODO: restore screen in case of panic
 
         let mut game = Game::new()?;
-
-        let rx = start_controller();
 
         start_drawer(out.by_ref(), &mut game, &rx)?;
 
